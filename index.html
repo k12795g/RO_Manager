@@ -179,10 +179,6 @@
             <p>左鍵點擊帳號區塊設定冷卻時間，右鍵點擊清除冷卻時間。</p>
         </div>
 
-        <div id="hol-instructions" style="display: none;">
-            <p>左鍵點擊帳號區塊設定冷卻時間，右鍵點擊清除冷卻時間。</p>
-        </div>
-
         <div id="accounts-container">
             <!-- Account blocks will be added here -->
         </div>
@@ -306,6 +302,7 @@
         const editModalCharLevelInput = document.getElementById('editModalCharLevel');
         const editModalCharClassInput = document.getElementById('editModalCharClass');
         const ctInstructions = document.getElementById('ct-instructions');
+        const holInstructions = document.getElementById('hol-instructions');
 
         let accounts = JSON.parse(localStorage.getItem('ro_accounts')) || [];
         let currentMode = 'constellationTower'; // constellationTower, hallOfLife, edit
@@ -313,12 +310,102 @@
         let currentSlot = null;
         let characterToEdit = null;
         let refreshInterval = null;
+        let draggedIndex = null;
+
+        function handleDragStart(e, index) {
+            draggedIndex = index;
+            e.dataTransfer.effectAllowed = 'move';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+        }
+
+        function handleDrop(e, targetIndex) {
+            e.preventDefault();
+            if (draggedIndex === null || draggedIndex === targetIndex) {
+                return;
+            }
+
+            const draggedAccount = accounts[draggedIndex];
+            accounts.splice(draggedIndex, 1);
+            accounts.splice(targetIndex, 0, draggedAccount);
+
+            draggedIndex = null;
+            saveAccounts();
+            renderCharacters();
+        }
+
+        function openEditCharacterModal(character) {
+            characterToEdit = character;
+            editModalCharIdInput.value = character.id;
+            editModalCharLevelInput.value = character.level;
+            editModalCharClassInput.value = character.class;
+            editCharacterModal.style.display = 'block';
+        }
+
+        function closeEditCharacterModal() {
+            editCharacterModal.style.display = 'none';
+            characterToEdit = null;
+        }
+
+        function saveCharacterChanges() {
+            if (characterToEdit) {
+                characterToEdit.id = editModalCharIdInput.value.trim();
+                characterToEdit.level = editModalCharLevelInput.value;
+                characterToEdit.class = editModalCharClassInput.value;
+                saveAccounts();
+                renderCharacters();
+                closeEditCharacterModal();
+            }
+        }
+
+        function setConstellationTowerCooldown(character) {
+            let now = new Date();
+            if (now.getHours() < 4) {
+                now.setDate(now.getDate() - 1);
+            }
+            now.setHours(4, 0, 0, 0);
+            now.setDate(now.getDate() + 3);
+            character.constellationTowerCooldown = now.getTime();
+            saveAccounts();
+            renderCharacters();
+        }
+
+        function advanceCooldown(character) {
+            let cooldown = new Date(character.constellationTowerCooldown);
+            cooldown.setDate(cooldown.getDate() - 1);
+            character.constellationTowerCooldown = cooldown.getTime();
+            saveAccounts();
+            renderCharacters();
+        }
+
+        function setHallOfLifeCooldown(account) {
+            const now = new Date();
+            let cooldownReset = new Date();
+            
+            // Calculate days to next Monday (0=Sun, 1=Mon, ...)
+            const daysUntilMonday = (1 - now.getDay() + 7) % 7;
+
+            cooldownReset.setDate(now.getDate() + daysUntilMonday);
+            cooldownReset.setHours(4, 0, 0, 0);
+
+            // If it's currently Monday after 4 AM, set for the next Monday
+            if (daysUntilMonday === 0 && now.getTime() > cooldownReset.getTime()) {
+                cooldownReset.setDate(cooldownReset.getDate() + 7);
+            }
+
+            account.hallOfLifeCooldown = cooldownReset.getTime();
+            saveAccounts();
+            renderCharacters();
+        }
 
         function changeMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
             document.querySelector(`.tab[onclick="changeMode('${mode}')"]`).classList.add('active');
             ctInstructions.style.display = mode === 'constellationTower' ? 'block' : 'none';
+            holInstructions.style.display = mode === 'hallOfLife' ? 'block' : 'none';
 
             clearInterval(refreshInterval);
             if (mode !== 'edit') {
@@ -390,6 +477,14 @@
                         characterCard.querySelector('.character-level').textContent = character.level;
                         characterCard.querySelector('.character-class').textContent = character.class;
 
+                        const cooldownTimer = characterCard.querySelector('.cooldown-timer');
+                        cooldownTimer.style.display = 'none';
+                        
+                        characterElement.onclick = null;
+                        characterElement.oncontextmenu = null;
+                        deleteButton.style.display = 'none';
+                        characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
+
                         if (currentMode === 'edit') {
                             deleteButton.style.display = 'block';
                             deleteButton.onclick = (e) => {
@@ -397,14 +492,7 @@
                                 deleteCharacter(account, character);
                             };
                             characterElement.onclick = () => openEditCharacterModal(character);
-                        } else {
-                            deleteButton.style.display = 'none';
-                        }
-
-                        const cooldownTimer = characterCard.querySelector('.cooldown-timer');
-                        cooldownTimer.style.display = 'none';
-
-                        if (currentMode === 'constellationTower') {
+                        } else if (currentMode === 'constellationTower') {
                             characterElement.onclick = () => setConstellationTowerCooldown(character);
                             characterElement.oncontextmenu = (e) => {
                                 e.preventDefault();
@@ -435,13 +523,7 @@
                                 } else {
                                     characterElement.classList.add('cd-yellow');
                                 }
-                            } else {
-                                characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
                             }
-                        } else {
-                            characterElement.onclick = null;
-                            characterElement.oncontextmenu = null;
-                            characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
                         }
 
                         characterList.appendChild(characterCard);
