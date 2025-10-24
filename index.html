@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RO 角色管理</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            color: #333;
+        }
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .account-section, .character-section {
+            background-color: #fff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        #accounts-container {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+        }
+        .account-block {
+            margin-bottom: 20px;
+        }
+        .character-list {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 5px;
+            border: 1px solid #ccc;
+            padding: 5px;
+            border-radius: 5px;
+        }
+        .character {
+            border: 1px solid #ccc;
+            padding: 2px;
+            border-radius: 5px;
+            font-size: 0.8em;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .character h3 {
+            margin: 2px 0;
+        }
+        .ct-mode-button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .character.cd-red {
+            background-color: #ffcccc;
+        }
+        .character.cd-yellow {
+            background-color: #ffffcc;
+        }
+        .character.cd-dark-red {
+            background-color: #ff9999;
+        }
+        .edit-mode-button {
+            background-color: #f44336;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        .delete-button {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.8em;
+            float: right;
+        }
+        .controls-container {
+            display: flex;
+            justify-content: space-around;
+            background-color: #f5f5f5;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .tab-container {
+            display: flex;
+            margin-bottom: 0;
+            background-color: #e0e0e0;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            background-color: #f0f0f0;
+        }
+        .tab.active {
+            background-color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+        #accounts-container {
+            background-color: #fff;
+            padding: 20px;
+        }
+        .placeholder {
+            border: 1px dashed #ccc;
+            padding: 5px;
+            border-radius: 5px;
+            height: 100%;
+            min-height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+        .add-account-placeholder {
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 2em;
+            color: #ccc;
+            min-height: 200px;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+        }
+        .data-management {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RO 角色管理</h1>
+
+        <div class="tab-container">
+            <div class="tab active" onclick="changeMode('constellationTower')">星座塔模式</div>
+            <div class="tab" onclick="changeMode('hallOfLife')">生命殿堂模式</div>
+            <div class="tab" onclick="changeMode('edit')">編輯模式</div>
+        </div>
+
+        <div id="ct-instructions" style="display: none;">
+            <p>左鍵點擊角色卡片設定3天CD，右鍵點擊減少一天CD。時間會自動推進，當設定錯誤時可使用右鍵調整</p>
+        </div>
+
+        <div id="hol-instructions" style="display: none;">
+            <p>左鍵點擊帳號區塊設定冷卻時間，右鍵點擊清除冷卻時間。</p>
+        </div>
+
+        <div id="hol-instructions" style="display: none;">
+            <p>左鍵點擊帳號區塊設定冷卻時間，右鍵點擊清除冷卻時間。</p>
+        </div>
+
+        <div id="accounts-container">
+            <!-- Account blocks will be added here -->
+        </div>
+
+    </div>
+
+    <div class="data-management">
+        <button onclick="exportData()">匯出資料</button>
+        <input type="file" id="importFile" accept=".json" style="display: none;" onchange="importData(event)">
+        <button onclick="document.getElementById('importFile').click()">匯入資料</button>
+    </div>
+
+            <div id="addCharacterModal" class="modal">
+                <div class="modal-content">
+                    <h2>新增角色</h2>
+                    <input type="text" id="modalCharId" placeholder="角色 ID">
+                    <input type="number" id="modalCharLevel" placeholder="等級" value="260">
+                    <select id="modalCharClass">
+                        <option value="斬首">斬首</option>
+                        <option value="遊俠">遊俠</option>
+                        <option value="盧恩">盧恩</option>
+                        <option value="咒術">咒術</option>
+                        <option value="妖術">妖術</option>
+                        <option value="主教">主教</option>
+                        <option value="盧恩龍爵">盧恩龍爵</option>
+                        <option value="帝國聖衛軍">帝國聖衛軍</option>
+                        <option value="禁咒魔導士">禁咒魔導士</option>
+                        <option value="元素支配者">元素支配者</option>
+                        <option value="機甲神匠">機甲神匠</option>
+                        <option value="生命締造者">生命締造者</option>
+                        <option value="十字影武">十字影武</option>
+                        <option value="深淵追跡者">深淵追跡者</option>
+                        <option value="樞機主教">樞機主教</option>
+                        <option value="聖裁者">聖裁者</option>
+                        <option value="風鷹狩獵者">風鷹狩獵者</option>
+                        <option value="天籟頌者">天籟頌者</option>
+                        <option value="樂之舞靈">樂之舞靈</option>
+                        <option value="夜行使">夜行使</option>
+                        <option value="天帝">天帝</option>
+                        <option value="契靈士">契靈士</option>
+                        <option value="魂靈師">魂靈師</option>
+                        <option value="流浪忍者">流浪忍者</option>
+                        <option value="疾風忍者">疾風忍者</option>
+                        <option value="終極初學者">終極初學者</option>
+                    </select>
+                    <button onclick="addCharacter()">新增角色</button>
+                    <button onclick="closeAddCharacterModal()">取消</button>
+                </div>
+            </div>
+    
+            <div id="editCharacterModal" class="modal">
+                <div class="modal-content">
+                    <h2>編輯角色</h2>
+                    <input type="text" id="editModalCharId" placeholder="角色 ID">
+                    <input type="number" id="editModalCharLevel" placeholder="等級">
+                    <select id="editModalCharClass">
+                        <option value="斬首">斬首</option>
+                        <option value="遊俠">遊俠</option>
+                        <option value="盧恩">盧恩</option>
+                        <option value="咒術">咒術</option>
+                        <option value="妖術">妖術</option>
+                        <option value="主教">主教</option>
+                        <option value="盧恩龍爵">盧恩龍爵</option>
+                        <option value="帝國聖衛軍">帝國聖衛軍</option>
+                        <option value="禁咒魔導士">禁咒魔導士</option>
+                        <option value="元素支配者">元素支配者</option>
+                        <option value="機甲神匠">機甲神匠</option>
+                        <option value="生命締造者">生命締造者</option>
+                        <option value="十字影武">十字影武</option>
+                        <option value="深淵追跡者">深淵追跡者</option>
+                        <option value="樞機主教">樞機主教</option>
+                        <option value="聖裁者">聖裁者</option>
+                        <option value="風鷹狩獵者">風鷹狩獵者</option>
+                        <option value="天籟頌者">天籟頌者</option>
+                        <option value="樂之舞靈">樂之舞靈</option>
+                        <option value="夜行使">夜行使</option>
+                        <option value="天帝">天帝</option>
+                        <option value="契靈士">契靈士</option>
+                        <option value="魂靈師">魂靈師</option>
+                        <option value="流浪忍者">流浪忍者</option>
+                        <option value="疾風忍者">疾風忍者</option>
+                        <option value="終極初學者">終極初學者</option>
+                    </select>
+                    <button onclick="saveCharacterChanges()">儲存</button>
+                    <button onclick="closeEditCharacterModal()">取消</button>
+                </div>
+            </div>
+    <template id="character-template">
+        <div class="character">
+            <button class="delete-button" style="display: none;">X</button>
+            <h3 class="character-id"></h3>
+            <p>Lv <span class="character-level"></span></p>
+            <p><span class="character-class"></span></p>
+            <p class="cooldown-timer"></p>
+        </div>
+    </template>
+
+    <template id="placeholder-template">
+        <div class="placeholder" onclick="openAddCharacterModal(this.dataset.account, this.dataset.slot)">
+            +
+        </div>
+    </template>
+
+    <template id="add-account-template">
+        <div class="add-account-placeholder" onclick="addAccount()">
+            + 新增帳號
+        </div>
+    </template>
+
+    <script>
+        const accountsContainer = document.getElementById('accounts-container');
+        const characterTemplate = document.getElementById('character-template');
+        const placeholderTemplate = document.getElementById('placeholder-template');
+        const addAccountTemplate = document.getElementById('add-account-template');
+        const addCharacterModal = document.getElementById('addCharacterModal');
+        const modalCharIdInput = document.getElementById('modalCharId');
+        const modalCharLevelInput = document.getElementById('modalCharLevel');
+        const modalCharClassInput = document.getElementById('modalCharClass');
+        const editCharacterModal = document.getElementById('editCharacterModal');
+        const editModalCharIdInput = document.getElementById('editModalCharId');
+        const editModalCharLevelInput = document.getElementById('editModalCharLevel');
+        const editModalCharClassInput = document.getElementById('editModalCharClass');
+        const ctInstructions = document.getElementById('ct-instructions');
+
+        let accounts = JSON.parse(localStorage.getItem('ro_accounts')) || [];
+        let currentMode = 'constellationTower'; // constellationTower, hallOfLife, edit
+        let currentAccount = null;
+        let currentSlot = null;
+        let characterToEdit = null;
+        let refreshInterval = null;
+
+        function changeMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelector(`.tab[onclick="changeMode('${mode}')"]`).classList.add('active');
+            ctInstructions.style.display = mode === 'constellationTower' ? 'block' : 'none';
+
+            clearInterval(refreshInterval);
+            if (mode !== 'edit') {
+                refreshInterval = setInterval(renderCharacters, 10000);
+            }
+
+            renderCharacters();
+        }
+
+        function renderCharacters() {
+            accountsContainer.innerHTML = '';
+            for (let i = 0; i < accounts.length; i++) {
+                const account = accounts[i];
+                const accountBlock = document.createElement('div');
+                accountBlock.classList.add('account-block');
+                accountBlock.dataset.index = i;
+
+                if (currentMode === 'edit') {
+                    accountBlock.draggable = true;
+                    accountBlock.ondragstart = (e) => handleDragStart(e, i);
+                    accountBlock.ondragover = (e) => handleDragOver(e);
+                    accountBlock.ondrop = (e) => handleDrop(e, i);
+                }
+
+                const accountTitle = document.createElement('h2');
+                accountTitle.textContent = account.name;
+
+                if (currentMode === 'hallOfLife') {
+                    accountBlock.onclick = () => setHallOfLifeCooldown(account);
+                    accountBlock.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        clearHallOfLifeCooldown(account);
+                    };
+                    const now = new Date();
+                    const cooldownEnd = new Date(account.hallOfLifeCooldown);
+                    if (cooldownEnd > now) {
+                        accountBlock.style.backgroundColor = '#ffcccc';
+                        const cooldownDate = document.createElement('p');
+                        cooldownDate.textContent = `冷卻至: ${cooldownEnd.getFullYear()}-${cooldownEnd.getMonth()+1}-${cooldownEnd.getDate()}`;
+                        accountTitle.appendChild(cooldownDate);
+                    }
+                } else {
+                    accountBlock.style.backgroundColor = '';
+                    accountBlock.onclick = null;
+                    accountBlock.oncontextmenu = null;
+                }
+
+                if (currentMode === 'edit') {
+                    const deleteAccountButton = document.createElement('button');
+                    deleteAccountButton.className = 'delete-button';
+                    deleteAccountButton.textContent = '刪除帳號';
+                    deleteAccountButton.onclick = () => deleteAccount(account.name);
+                    accountTitle.appendChild(deleteAccountButton);
+                }
+
+                accountBlock.appendChild(accountTitle);
+
+                const characterList = document.createElement('div');
+                characterList.classList.add('character-list');
+
+                for (let j = 0; j < 16; j++) {
+                    const character = account.characters[j];
+                    if (character) {
+                        const characterCard = characterTemplate.content.cloneNode(true);
+                        const characterElement = characterCard.querySelector('.character');
+                        const deleteButton = characterCard.querySelector('.delete-button');
+
+                        characterCard.querySelector('.character-id').textContent = character.id;
+                        characterCard.querySelector('.character-level').textContent = character.level;
+                        characterCard.querySelector('.character-class').textContent = character.class;
+
+                        if (currentMode === 'edit') {
+                            deleteButton.style.display = 'block';
+                            deleteButton.onclick = (e) => {
+                                e.stopPropagation();
+                                deleteCharacter(account, character);
+                            };
+                            characterElement.onclick = () => openEditCharacterModal(character);
+                        } else {
+                            deleteButton.style.display = 'none';
+                        }
+
+                        const cooldownTimer = characterCard.querySelector('.cooldown-timer');
+                        cooldownTimer.style.display = 'none';
+
+                        if (currentMode === 'constellationTower') {
+                            characterElement.onclick = () => setConstellationTowerCooldown(character);
+                            characterElement.oncontextmenu = (e) => {
+                                e.preventDefault();
+                                advanceCooldown(character);
+                            };
+
+                            const now = new Date();
+                            const cooldownEnd = new Date(character.constellationTowerCooldown);
+
+                            // Adjust for 4 AM reset time
+                            let today = new Date();
+                            if (today.getHours() < 4) {
+                                today.setDate(today.getDate() - 1);
+                            }
+                            today.setHours(4, 0, 0, 0);
+
+                            if (cooldownEnd > today) {
+                                const diffTime = Math.abs(cooldownEnd - today);
+                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                                cooldownTimer.textContent = `CD: ${diffDays} 天`;
+                                cooldownTimer.style.display = 'block';
+
+                                if (diffDays >= 3) {
+                                    characterElement.classList.add('cd-dark-red');
+                                } else if (diffDays >= 2) {
+                                    characterElement.classList.add('cd-red');
+                                } else {
+                                    characterElement.classList.add('cd-yellow');
+                                }
+                            } else {
+                                characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
+                            }
+                        } else {
+                            characterElement.onclick = null;
+                            characterElement.oncontextmenu = null;
+                            characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
+                        }
+
+                        characterList.appendChild(characterCard);
+                    } else {
+                        const placeholderCard = placeholderTemplate.content.cloneNode(true);
+                        const placeholderElement = placeholderCard.querySelector('.placeholder');
+                        placeholderElement.dataset.account = account.name;
+                        placeholderElement.dataset.slot = j;
+                        characterList.appendChild(placeholderCard);
+                    }
+                }
+                accountBlock.appendChild(characterList);
+                accountsContainer.appendChild(accountBlock);
+            }
+
+            const addAccountButton = addAccountTemplate.content.cloneNode(true);
+            accountsContainer.appendChild(addAccountButton);
+        }
+
+        function clearHallOfLifeCooldown(account) {
+            account.hallOfLifeCooldown = 0;
+            saveAccounts();
+            renderCharacters();
+        }
+
+        function openAddCharacterModal(accountName, slotIndex) {
+            currentAccount = accounts.find(acc => acc.name === accountName);
+            currentSlot = slotIndex;
+            addCharacterModal.style.display = 'block';
+        }
+
+        function closeAddCharacterModal() {
+            addCharacterModal.style.display = 'none';
+        }
+
+        function deleteAccount(accountName) {
+            if (confirm(`確定要刪除帳號 ${accountName} 嗎？`)) {
+                accounts = accounts.filter(acc => acc.name !== accountName);
+                saveAccounts();
+                renderCharacters();
+            }
+        }
+
+        function deleteCharacter(account, character) {
+            if (confirm(`確定要刪除角色 ${character.id} 嗎？`)) {
+                const charIndex = account.characters.indexOf(character);
+                if (charIndex > -1) {
+                    account.characters[charIndex] = null;
+                }
+                saveAccounts();
+                renderCharacters();
+            }
+        }
+
+        function setConstellationTowerCooldown(character) {
+            let now = new Date();
+            if (now.getHours() < 4) {
+                now.setDate(now.getDate() - 1);
+            }
+            now.setHours(4, 0, 0, 0);
+            now.setDate(now.getDate() + 3);
+            character.constellationTowerCooldown = now.getTime();
+            saveAccounts();
+            renderCharacters();
+        }
+
+        function addAccount() {
+            const accountName = prompt('請輸入新的帳號名稱:');
+            if (accountName && !accounts.find(acc => acc.name === accountName)) {
+                const newAccount = {
+                    name: accountName,
+                    characters: []
+                };
+                accounts.push(newAccount);
+                saveAccounts();
+                renderCharacters();
+            }
+        }
+
+        function addCharacter() {
+            if (currentAccount) {
+                const characterData = {
+                    id: modalCharIdInput.value.trim(),
+                    level: modalCharLevelInput.value,
+                    class: modalCharClassInput.value,
+                    constellationTowerCooldown: 0
+                };
+                if (characterData.id && characterData.level && characterData.class) {
+                    currentAccount.characters[currentSlot] = characterData;
+                    saveAccounts();
+                    renderCharacters();
+                    closeAddCharacterModal();
+                    modalCharIdInput.value = '';
+                }
+            }
+        }
+
+        function saveAccounts() {
+            localStorage.setItem('ro_accounts', JSON.stringify(accounts));
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(accounts, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.setAttribute('href', url);
+            link.setAttribute('download', 'ro_characters.json');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedAccounts = JSON.parse(e.target.result);
+                        // Basic validation
+                        if (Array.isArray(importedAccounts)) {
+                            accounts = importedAccounts;
+                            saveAccounts();
+                            renderCharacters();
+                            alert('資料匯入成功！');
+                        } else {
+                            alert('匯入的檔案格式不正確。');
+                        }
+                    } catch (error) {
+                        alert('讀取檔案時發生錯誤。');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Initial render
+        renderCharacters();
+        changeMode(currentMode);
+    </script>
