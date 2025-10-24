@@ -159,6 +159,10 @@
             bottom: 10px;
             right: 10px;
         }
+        .hall-of-life-clickable {
+            cursor: pointer;
+            border: 2px dashed #4CAF50;
+        }
     </style>
 </head>
 <body>
@@ -197,12 +201,6 @@
                     <input type="text" id="modalCharId" placeholder="角色 ID">
                     <input type="number" id="modalCharLevel" placeholder="等級" value="260">
                     <select id="modalCharClass">
-                        <option value="斬首">斬首</option>
-                        <option value="遊俠">遊俠</option>
-                        <option value="盧恩">盧恩</option>
-                        <option value="咒術">咒術</option>
-                        <option value="妖術">妖術</option>
-                        <option value="主教">主教</option>
                         <option value="盧恩龍爵">盧恩龍爵</option>
                         <option value="帝國聖衛軍">帝國聖衛軍</option>
                         <option value="禁咒魔導士">禁咒魔導士</option>
@@ -228,19 +226,13 @@
                     <button onclick="closeAddCharacterModal()">取消</button>
                 </div>
             </div>
-    
+
             <div id="editCharacterModal" class="modal">
                 <div class="modal-content">
                     <h2>編輯角色</h2>
                     <input type="text" id="editModalCharId" placeholder="角色 ID">
                     <input type="number" id="editModalCharLevel" placeholder="等級">
                     <select id="editModalCharClass">
-                        <option value="斬首">斬首</option>
-                        <option value="遊俠">遊俠</option>
-                        <option value="盧恩">盧恩</option>
-                        <option value="咒術">咒術</option>
-                        <option value="妖術">妖術</option>
-                        <option value="主教">主教</option>
                         <option value="盧恩龍爵">盧恩龍爵</option>
                         <option value="帝國聖衛軍">帝國聖衛軍</option>
                         <option value="禁咒魔導士">禁咒魔導士</option>
@@ -361,15 +353,24 @@
         }
 
         function setConstellationTowerCooldown(character) {
-            let now = new Date();
-            if (now.getHours() < 4) {
-                now.setDate(now.getDate() - 1);
+            const now = new Date();
+            let today = new Date();
+            if (today.getHours() < 4) {
+                today.setDate(today.getDate() - 1);
             }
-            now.setHours(4, 0, 0, 0);
-            now.setDate(now.getDate() + 3);
-            character.constellationTowerCooldown = now.getTime();
-            saveAccounts();
-            renderCharacters();
+            today.setHours(4, 0, 0, 0);
+
+            if (character.constellationTowerCooldown < today.getTime()) {
+                let cooldownDate = new Date();
+                if (cooldownDate.getHours() < 4) {
+                    cooldownDate.setDate(cooldownDate.getDate() - 1);
+                }
+                cooldownDate.setHours(4, 0, 0, 0);
+                cooldownDate.setDate(cooldownDate.getDate() + 3);
+                character.constellationTowerCooldown = cooldownDate.getTime();
+                saveAccounts();
+                renderCharacters();
+            }
         }
 
         function advanceCooldown(character) {
@@ -383,7 +384,7 @@
         function setHallOfLifeCooldown(account) {
             const now = new Date();
             let cooldownReset = new Date();
-            
+
             // Calculate days to next Monday (0=Sun, 1=Mon, ...)
             const daysUntilMonday = (1 - now.getDay() + 7) % 7;
 
@@ -434,6 +435,7 @@
                 accountTitle.textContent = account.name;
 
                 if (currentMode === 'hallOfLife') {
+                    accountBlock.classList.add('hall-of-life-clickable');
                     accountBlock.onclick = () => setHallOfLifeCooldown(account);
                     accountBlock.oncontextmenu = (e) => {
                         e.preventDefault();
@@ -448,6 +450,7 @@
                         accountTitle.appendChild(cooldownDate);
                     }
                 } else {
+                    accountBlock.classList.remove('hall-of-life-clickable');
                     accountBlock.style.backgroundColor = '';
                     accountBlock.onclick = null;
                     accountBlock.oncontextmenu = null;
@@ -479,7 +482,7 @@
 
                         const cooldownTimer = characterCard.querySelector('.cooldown-timer');
                         cooldownTimer.style.display = 'none';
-                        
+
                         characterElement.onclick = null;
                         characterElement.oncontextmenu = null;
                         deleteButton.style.display = 'none';
@@ -576,18 +579,6 @@
                 saveAccounts();
                 renderCharacters();
             }
-        }
-
-        function setConstellationTowerCooldown(character) {
-            let now = new Date();
-            if (now.getHours() < 4) {
-                now.setDate(now.getDate() - 1);
-            }
-            now.setHours(4, 0, 0, 0);
-            now.setDate(now.getDate() + 3);
-            character.constellationTowerCooldown = now.getTime();
-            saveAccounts();
-            renderCharacters();
         }
 
         function addAccount() {
