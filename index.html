@@ -163,6 +163,12 @@
             cursor: pointer;
             border: 2px dashed #4CAF50;
         }
+        .level-highlight-ct {
+            border: 2px solid #00bcd4;
+        }
+        .level-highlight-hol {
+            border: 2px solid #9c27b0;
+        }
     </style>
 </head>
 <body>
@@ -469,76 +475,81 @@
                 const characterList = document.createElement('div');
                 characterList.classList.add('character-list');
 
-                for (let j = 0; j < 16; j++) {
-                    const character = account.characters[j];
-                    if (character) {
-                        const characterCard = characterTemplate.content.cloneNode(true);
-                        const characterElement = characterCard.querySelector('.character');
-                        const deleteButton = characterCard.querySelector('.delete-button');
-
-                        characterCard.querySelector('.character-id').textContent = character.id;
-                        characterCard.querySelector('.character-level').textContent = character.level;
-                        characterCard.querySelector('.character-class').textContent = character.class;
-
-                        const cooldownTimer = characterCard.querySelector('.cooldown-timer');
-                        cooldownTimer.style.display = 'none';
-
-                        characterElement.onclick = null;
-                        characterElement.oncontextmenu = null;
-                        deleteButton.style.display = 'none';
-                        characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red');
-
-                        if (currentMode === 'edit') {
-                            deleteButton.style.display = 'block';
-                            deleteButton.onclick = (e) => {
-                                e.stopPropagation();
-                                deleteCharacter(account, character);
-                            };
-                            characterElement.onclick = () => openEditCharacterModal(character);
-                        } else if (currentMode === 'constellationTower') {
-                            characterElement.onclick = () => setConstellationTowerCooldown(character);
-                            characterElement.oncontextmenu = (e) => {
-                                e.preventDefault();
-                                advanceCooldown(character);
-                            };
-
-                            const now = new Date();
-                            const cooldownEnd = new Date(character.constellationTowerCooldown);
-
-                            // Adjust for 4 AM reset time
-                            let today = new Date();
-                            if (today.getHours() < 4) {
-                                today.setDate(today.getDate() - 1);
-                            }
-                            today.setHours(4, 0, 0, 0);
-
-                            if (cooldownEnd > today) {
-                                const diffTime = Math.abs(cooldownEnd - today);
-                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-                                cooldownTimer.textContent = `CD: ${diffDays} 天`;
-                                cooldownTimer.style.display = 'block';
-
-                                if (diffDays >= 3) {
-                                    characterElement.classList.add('cd-dark-red');
-                                } else if (diffDays >= 2) {
-                                    characterElement.classList.add('cd-red');
-                                } else {
-                                    characterElement.classList.add('cd-yellow');
-                                }
-                            }
-                        }
-
-                        characterList.appendChild(characterCard);
-                    } else {
-                        const placeholderCard = placeholderTemplate.content.cloneNode(true);
-                        const placeholderElement = placeholderCard.querySelector('.placeholder');
-                        placeholderElement.dataset.account = account.name;
-                        placeholderElement.dataset.slot = j;
-                        characterList.appendChild(placeholderCard);
-                    }
-                }
-                accountBlock.appendChild(characterList);
+                                for (let j = 0; j < 16; j++) {
+                                    const character = account.characters[j];
+                                    if (character) {
+                                        const characterCard = characterTemplate.content.cloneNode(true);
+                                        const characterElement = characterCard.querySelector('.character');
+                                        const deleteButton = characterCard.querySelector('.delete-button');
+                
+                                        characterCard.querySelector('.character-id').textContent = character.id;
+                                        characterCard.querySelector('.character-level').textContent = character.level;
+                                        characterCard.querySelector('.character-class').textContent = character.class;
+                
+                                        const cooldownTimer = characterCard.querySelector('.cooldown-timer');
+                                        cooldownTimer.style.display = 'none';
+                                        
+                                        characterElement.onclick = null;
+                                        characterElement.oncontextmenu = null;
+                                        deleteButton.style.display = 'none';
+                                        characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red', 'level-highlight-ct', 'level-highlight-hol');
+                
+                                        if (currentMode === 'constellationTower' && character.level >= 240) {
+                                            characterElement.classList.add('level-highlight-ct');
+                                        } else if (currentMode === 'hallOfLife' && character.level >= 250) {
+                                            characterElement.classList.add('level-highlight-hol');
+                                        }
+                
+                                        if (currentMode === 'edit') {
+                                            deleteButton.style.display = 'block';
+                                            deleteButton.onclick = (e) => {
+                                                e.stopPropagation();
+                                                deleteCharacter(account, character);
+                                            };
+                                            characterElement.onclick = () => openEditCharacterModal(character);
+                                        } else if (currentMode === 'constellationTower') {
+                                            characterElement.onclick = () => setConstellationTowerCooldown(character);
+                                            characterElement.oncontextmenu = (e) => {
+                                                e.preventDefault();
+                                                advanceCooldown(character);
+                                            };
+                
+                                            const now = new Date();
+                                            const cooldownEnd = new Date(character.constellationTowerCooldown);
+                
+                                            // Adjust for 4 AM reset time
+                                            let today = new Date();
+                                            if (today.getHours() < 4) {
+                                                today.setDate(today.getDate() - 1);
+                                            }
+                                            today.setHours(4, 0, 0, 0);
+                
+                                            if (cooldownEnd > today) {
+                                                const diffTime = Math.abs(cooldownEnd - today);
+                                                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                
+                                                cooldownTimer.textContent = `CD: ${diffDays} 天`;
+                                                cooldownTimer.style.display = 'block';
+                
+                                                if (diffDays >= 3) {
+                                                    characterElement.classList.add('cd-dark-red');
+                                                } else if (diffDays >= 2) {
+                                                    characterElement.classList.add('cd-red');
+                                                } else {
+                                                    characterElement.classList.add('cd-yellow');
+                                                }
+                                            }
+                                        }
+                
+                                        characterList.appendChild(characterCard);
+                                    } else {
+                                        const placeholderCard = placeholderTemplate.content.cloneNode(true);
+                                        const placeholderElement = placeholderCard.querySelector('.placeholder');
+                                        placeholderElement.dataset.account = account.name;
+                                        placeholderElement.dataset.slot = j;
+                                        characterList.appendChild(placeholderCard);
+                                    }
+                                }                accountBlock.appendChild(characterList);
                 accountsContainer.appendChild(accountBlock);
             }
 
