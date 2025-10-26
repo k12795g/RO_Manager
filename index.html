@@ -366,7 +366,7 @@
             }
             today.setHours(4, 0, 0, 0);
 
-            if (character.constellationTowerCooldown < today.getTime()) {
+            if (character.constellationTowerCooldown <= today.getTime()) {
                 let cooldownDate = new Date();
                 if (cooldownDate.getHours() < 4) {
                     cooldownDate.setDate(cooldownDate.getDate() - 1);
