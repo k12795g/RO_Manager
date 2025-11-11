@@ -176,9 +176,9 @@
         <h1>RO 角色管理</h1>
 
         <div class="tab-container">
-            <div class="tab active" onclick="changeMode('constellationTower')">星座塔模式</div>
-            <div class="tab" onclick="changeMode('hallOfLife')">生命殿堂模式</div>
-            <div class="tab" onclick="changeMode('edit')">編輯模式</div>
+            <div class="tab active" onclick="changeMode('constellationTower')">星座塔</div>
+            <div class="tab" onclick="changeMode('hallOfLife')">生命殿堂</div>
+            <div class="tab" onclick="changeMode('edit')">編輯</div>
         </div>
 
         <div id="ct-instructions" style="display: none;">
@@ -423,6 +423,27 @@
         }
 
         function renderCharacters() {
+            let constellationTowerCount = 0;
+            const hallOfLifeQualifyingAccounts = new Set();
+
+            for (const account of accounts) {
+                for (const character of account.characters) {
+                    if (character) {
+                        if (character.level >= 240) {
+                            constellationTowerCount++;
+                        }
+                        if (character.level >= 250) {
+                            hallOfLifeQualifyingAccounts.add(account.name);
+                        }
+                    }
+                }
+            }
+
+            const hallOfLifeAccountCount = hallOfLifeQualifyingAccounts.size;
+
+            document.querySelector('.tab[onclick="changeMode(\'constellationTower\')"]').textContent = `星座塔 (可用角色:${constellationTowerCount})`;
+            document.querySelector('.tab[onclick="changeMode(\'hallOfLife\')"]').textContent = `生命殿堂 (可用帳號:${hallOfLifeAccountCount})`;
+
             accountsContainer.innerHTML = '';
             for (let i = 0; i < accounts.length; i++) {
                 const account = accounts[i];
@@ -481,25 +502,25 @@
                                         const characterCard = characterTemplate.content.cloneNode(true);
                                         const characterElement = characterCard.querySelector('.character');
                                         const deleteButton = characterCard.querySelector('.delete-button');
-                
+
                                         characterCard.querySelector('.character-id').textContent = character.id;
                                         characterCard.querySelector('.character-level').textContent = character.level;
                                         characterCard.querySelector('.character-class').textContent = character.class;
-                
+
                                         const cooldownTimer = characterCard.querySelector('.cooldown-timer');
                                         cooldownTimer.style.display = 'none';
-                                        
+
                                         characterElement.onclick = null;
                                         characterElement.oncontextmenu = null;
                                         deleteButton.style.display = 'none';
                                         characterElement.classList.remove('cd-red', 'cd-yellow', 'cd-dark-red', 'level-highlight-ct', 'level-highlight-hol');
-                
+
                                         if (currentMode === 'constellationTower' && character.level >= 240) {
                                             characterElement.classList.add('level-highlight-ct');
                                         } else if (currentMode === 'hallOfLife' && character.level >= 250) {
                                             characterElement.classList.add('level-highlight-hol');
                                         }
-                
+
                                         if (currentMode === 'edit') {
                                             deleteButton.style.display = 'block';
                                             deleteButton.onclick = (e) => {
@@ -513,24 +534,24 @@
                                                 e.preventDefault();
                                                 advanceCooldown(character);
                                             };
-                
+
                                             const now = new Date();
                                             const cooldownEnd = new Date(character.constellationTowerCooldown);
-                
+
                                             // Adjust for 4 AM reset time
                                             let today = new Date();
                                             if (today.getHours() < 4) {
                                                 today.setDate(today.getDate() - 1);
                                             }
                                             today.setHours(4, 0, 0, 0);
-                
+
                                             if (cooldownEnd > today) {
                                                 const diffTime = Math.abs(cooldownEnd - today);
                                                 const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                
+
                                                 cooldownTimer.textContent = `CD: ${diffDays} 天`;
                                                 cooldownTimer.style.display = 'block';
-                
+
                                                 if (diffDays >= 3) {
                                                     characterElement.classList.add('cd-dark-red');
                                                 } else if (diffDays >= 2) {
@@ -540,7 +561,7 @@
                                                 }
                                             }
                                         }
-                
+
                                         characterList.appendChild(characterCard);
                                     } else {
                                         const placeholderCard = placeholderTemplate.content.cloneNode(true);
